@@ -1,0 +1,23 @@
+[package]
+name = "pool_controller"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+sim = ["embassy-executor/arch-std", "embassy-time/mock-driver"]
+default = ["sim"]
+
+[dependencies]
+embassy-executor = { git = "https://github.com/embassy-rs/embassy.git", features = ["nightly", "executor-thread"] }
+embassy-time = { git = "https://github.com/embassy-rs/embassy.git", version = "0.3.1" }
+embedded-hal-async = "1.0.0"
+portable-atomic = { version = "1.6.0", features = ["critical-section"] }
+static_cell = "2.1.0"
+
+[target.thumbv6m-none-eabi.dependencies]
+cyw43 = { git = "https://github.com/embassy-rs/embassy.git", version = "0.1.0" }
+cyw43-pio = { git = "https://github.com/embassy-rs/embassy.git", version = "0.1.0" }
+cortex-m-rt = { version = "0.7.3" }
+embassy-rp = { git = "https://github.com/embassy-rs/embassy.git", features = ["intrinsics", "run-from-ram", "critical-section-impl", "time-driver"] }
+mipidsi = { version = "0.8.0" }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy.git", features = ["nightly", "executor-thread", "arch-cortex-m", "integrated-timers"] }

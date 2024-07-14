@@ -1,0 +1,7 @@
+[target.thumbv6m-none-eabi]
+rustflags = [
+    "-C", "target-cpu=cortex-m0plus",
+    "-C", "link-arg=--nmagic",
+    "-C", "link-arg=-Tlink.x",
+    "-C", "link-arg=-Tlink-rp.x",
+]
