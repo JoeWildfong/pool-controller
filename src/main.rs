@@ -1,56 +1,52 @@
 #![no_std]
+#![no_main]
 #![feature(impl_trait_in_assoc_type)] // for embassy-executor
-#![cfg_attr(not(feature = "sim"), no_main)]
 
 use core::future::pending;
 
 use embassy_executor::Spawner;
+use embassy_net::udp::PacketMetadata;
+use embassy_rp::config::Config;
+use net::NetworkDriver;
+use static_cell::StaticCell;
+use time::clock::Clock;
 
-#[cfg(not(feature = "sim"))]
+mod time;
+
 mod blink;
-#[cfg(not(feature = "sim"))]
-mod wifi;
-#[cfg(not(feature = "sim"))]
+mod net;
+
 #[panic_handler]
 fn panic_handler(_info: &core::panic::PanicInfo<'_>) -> ! {
     loop {}
 }
-#[cfg(not(feature = "sim"))]
 embassy_rp::bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => embassy_rp::pio::InterruptHandler<embassy_rp::peripherals::PIO0>;
+    USBCTRL_IRQ => embassy_rp::usb::InterruptHandler<embassy_rp::peripherals::USB>;
 });
-
-#[cfg(feature = "sim")]
-extern crate std;
-
 
 #[embassy_executor::main]
 async fn main(_s: Spawner) {
-    #[cfg(not(feature = "sim"))]
-    {
-        use embassy_rp::{gpio::{Level, Output}, config::Config, pio::Pio};
-        use static_cell::StaticCell;
+    let config = Config::default();
+    let p = embassy_rp::init(config);
 
-        let fw = include_bytes!("../firmware/43439A0.bin");
-        let clm = include_bytes!("../firmware/43439A0_clm.bin");
-        let config = Config::default();
-        let p = embassy_rp::init(config);
+    let (driver, usb, runner) = NetworkDriver::new(p.USB, Irqs);
+    static DRIVER_CELL: StaticCell<NetworkDriver> = StaticCell::new();
+    let driver = DRIVER_CELL.init(driver);
+    let _ = _s.spawn(net::usb_task(usb));
+    let _ = _s.spawn(net::usb_ncm_task(runner));
+    let _ = _s.spawn(net::net_task(driver));
 
-        let pwr = Output::new(p.PIN_23, Level::Low);
-        let cs = Output::new(p.PIN_25, Level::High);
-        let clk = p.PIN_29;
-        let dio = p.PIN_24;
+    let mut clock = Clock::new();
+    let mut rx_buffer = [0; 4096];
+    let mut tx_buffer = [0; 4096];
+    let mut rx_meta = [PacketMetadata::EMPTY; 16];
+    let mut tx_meta = [PacketMetadata::EMPTY; 16];
+    let _ = time::adjust_current_time(
+        driver.ntp_socket(&mut rx_meta, &mut rx_buffer, &mut tx_meta, &mut tx_buffer),
+        &mut clock,
+    )
+    .await;
 
-        let mut pio0 = Pio::new(p.PIO0, Irqs);
-        let cyw_spi = cyw43_pio::PioSpi::new(&mut pio0.common, pio0.sm0, pio0.irq0, cs, dio, clk, p.DMA_CH0);
-        let state = {
-            static CELL: StaticCell<cyw43::State> = StaticCell::new();
-            CELL.uninit().write(cyw43::State::new())
-        };
-        let (_net_device, mut control, runner) = cyw43::new(state, pwr, cyw_spi, fw).await;
-        let _ = _s.spawn(wifi::wifi_task(runner));
-        control.init(clm).await;
-        let _ = _s.spawn(blink::blink(control));
-        pending().await
-    }
+    pending().await
 }

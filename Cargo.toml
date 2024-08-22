@@ -3,21 +3,20 @@ name = "pool_controller"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-sim = ["embassy-executor/arch-std", "embassy-time/mock-driver"]
-default = ["sim"]
-
 [dependencies]
-embassy-executor = { git = "https://github.com/embassy-rs/embassy.git", features = ["nightly", "executor-thread"] }
-embassy-time = { git = "https://github.com/embassy-rs/embassy.git", version = "0.3.1" }
+embassy-time = { version = "0.3.2" }
 embedded-hal-async = "1.0.0"
 portable-atomic = { version = "1.6.0", features = ["critical-section"] }
+sntpc = { version = "0.3.7", default-features = false, features = ["async"] }
 static_cell = "2.1.0"
-
-[target.thumbv6m-none-eabi.dependencies]
-cyw43 = { git = "https://github.com/embassy-rs/embassy.git", version = "0.1.0" }
-cyw43-pio = { git = "https://github.com/embassy-rs/embassy.git", version = "0.1.0" }
+cyw43 = { version = "0.2.0" }
+cyw43-pio = { version = "0.2.0" }
 cortex-m-rt = { version = "0.7.3" }
-embassy-rp = { git = "https://github.com/embassy-rs/embassy.git", features = ["intrinsics", "run-from-ram", "critical-section-impl", "time-driver"] }
+embassy-rp = { version = "0.2.0", features = ["intrinsics", "run-from-ram", "critical-section-impl", "time-driver"] }
 mipidsi = { version = "0.8.0" }
-embassy-executor = { git = "https://github.com/embassy-rs/embassy.git", features = ["nightly", "executor-thread", "arch-cortex-m", "integrated-timers"] }
+embassy-executor = { version = "0.6.0", features = ["nightly", "executor-thread", "arch-cortex-m", "integrated-timers"] }
+embassy-net = { version = "0.4.0", features = ["dns", "udp", "dhcpv4", "medium-ethernet", "proto-ipv4"] }
+embassy-usb = { version = "0.3.0" }
+rand_core = "0.6.4"
+no-std-net = "0.6.0"
+thiserror-no-std = "2.0.2"
