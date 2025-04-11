@@ -203,6 +203,16 @@ impl<'a> NtpUdpSocket for NtpSocket<'a> {
     }
 }
 
+impl<'a> NtpUdpSocket for &'a NtpSocket<'a> {
+    async fn recv_from(&self, buf: &mut [u8]) -> sntpc::Result<(usize, SocketAddr)> {
+        NtpSocket::recv_from(*self, buf).await
+    }
+
+    async fn send_to<T: ToSocketAddrs + Send>(&self, buf: &[u8], addr: T) -> sntpc::Result<usize> {
+        NtpSocket::send_to(*self, buf, addr).await
+    }
+}
+
 fn emb_endpoint_to_sock_addr(endpoint: IpEndpoint) -> SocketAddr {
     let port = endpoint.port;
     let addr = match endpoint.addr {

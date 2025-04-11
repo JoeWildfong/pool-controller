@@ -20,3 +20,5 @@ embassy-usb = { version = "0.3.0" }
 rand_core = "0.6.4"
 no-std-net = "0.6.0"
 thiserror-no-std = "2.0.2"
+cortex-m = "0.7.7"
+jiff = { version = "0.2.6", default-features = false, features = ["static"] }

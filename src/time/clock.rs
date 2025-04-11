@@ -1,5 +1,8 @@
 use embassy_time::{Duration, Instant};
+use jiff::{Timestamp, Zoned};
 use sntpc::{NtpResult, NtpTimestampGenerator};
+
+use crate::TORONTO_TZ;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Clock {
@@ -13,6 +16,14 @@ impl Clock {
 
     pub fn get_unix_time(&self) -> Instant {
         Instant::now() + self.offset
+    }
+
+    pub fn get_toronto_time(&self) -> Zoned {
+        Zoned::new(
+            Timestamp::from_microsecond(self.get_unix_time().as_micros().try_into().unwrap())
+                .unwrap(),
+            TORONTO_TZ.clone(),
+        )
     }
 
     pub fn inject_ntp(&mut self, measurement: NtpResult) {
