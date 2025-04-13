@@ -5,6 +5,3 @@ rustflags = [
     "-C", "link-arg=-Tlink.x",
     "-C", "link-arg=-Tlink-rp.x",
 ]
-
-[build]
-target = "thumbv6m-none-eabi"

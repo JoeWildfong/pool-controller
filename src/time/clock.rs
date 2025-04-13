@@ -1,47 +1,56 @@
-use embassy_time::{Duration, Instant};
+use core::time::Duration;
+
+use embassy_time::Instant;
 use jiff::{Timestamp, Zoned};
 use sntpc::{NtpResult, NtpTimestampGenerator};
 
 use crate::TORONTO_TZ;
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone)]
 pub struct Clock {
-    offset: Duration,
+    startup_time: jiff::Zoned,
 }
 
 impl Clock {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            startup_time: jiff::Zoned::default().with_time_zone(TORONTO_TZ.clone())
+        }
     }
 
-    pub fn get_unix_time(&self) -> Instant {
-        Instant::now() + self.offset
+    pub fn get_timestamp(&self) -> Timestamp {
+        self.get_toronto_time().timestamp()
     }
 
     pub fn get_toronto_time(&self) -> Zoned {
-        Zoned::new(
-            Timestamp::from_microsecond(self.get_unix_time().as_micros().try_into().unwrap())
-                .unwrap(),
-            TORONTO_TZ.clone(),
-        )
+        self.startup_time.clone().saturating_add(Duration::from_micros(Instant::now().as_micros()))
     }
 
     pub fn inject_ntp(&mut self, measurement: NtpResult) {
-        match measurement.offset() {
-            i @ 0.. => self.offset += Duration::from_millis(i.unsigned_abs()),
-            i @ ..0 => self.offset -= Duration::from_millis(i.unsigned_abs()),
-        }
+        self.startup_time += jiff::SignedDuration::from_micros(measurement.offset);
+    }
+
+    pub fn get_timestamp_gen(&self) -> TimestampGen<'_> {
+        TimestampGen { now: Timestamp::default(), clock: self }
     }
 }
 
-impl NtpTimestampGenerator for Clock {
-    fn init(&mut self) {}
+#[derive(Debug, Clone, Copy)]
+pub struct TimestampGen<'a> {
+    now: Timestamp,
+    clock: &'a Clock,
+}
+
+impl NtpTimestampGenerator for TimestampGen<'_> {
+    fn init(&mut self) {
+        self.now = self.clock.get_timestamp()
+    }
 
     fn timestamp_sec(&self) -> u64 {
-        self.get_unix_time().as_secs()
+        self.now.as_second().try_into().unwrap()
     }
 
     fn timestamp_subsec_micros(&self) -> u32 {
-        (self.get_unix_time().as_micros() % 1_000_000) as u32
+        self.now.subsec_microsecond().try_into().unwrap()
     }
 }

@@ -1,4 +1,4 @@
 [toolchain]
-channel = "nightly-2024-06-19"
+channel = "nightly-2025-04-12"
 targets = [ "thumbv6m-none-eabi" ]
 profile = "default"
