@@ -47,7 +47,7 @@ impl NetworkDriver {
         Self,
         UsbDevice<'static, UsbDriver>,
         Runner<'static, Driver<'static, USB>, MTU>,
-        embassy_net::Runner<'static, Device<'static, MTU>>
+        embassy_net::Runner<'static, Device<'static, MTU>>,
     )
     where
         B: Binding<<USB as embassy_rp::usb::Instance>::Interrupt, InterruptHandler<USB>>,
@@ -107,14 +107,9 @@ impl NetworkDriver {
         let mut rng = RoscRng;
         let seed = rng.next_u64();
 
-
         static RESOURCES: StaticCell<StackResources<3>> = StaticCell::new();
-        let (stack, net_runner) = embassy_net::new(
-            device,
-            config,
-            RESOURCES.init(StackResources::new()),
-            seed,
-        );
+        let (stack, net_runner) =
+            embassy_net::new(device, config, RESOURCES.init(StackResources::new()), seed);
 
         let driver = Self { inner: stack };
         (driver, usb, usb_ncm_runner, net_runner)

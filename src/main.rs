@@ -60,12 +60,7 @@ impl RunningState {
             } else {
                 now.date().tomorrow().unwrap()
             };
-            let on_zoned = now
-                .with()
-                .date(date)
-                .time(Self::ON_TIME)
-                .build()
-                .unwrap();
+            let on_zoned = now.with().date(date).time(Self::ON_TIME).build().unwrap();
 
             Self {
                 running: false,
@@ -83,7 +78,8 @@ fn setup_platform(_s: &Spawner) -> (Screen, NtpSocket, Pump) {
         let config = Config::default();
         let p = embassy_rp::init(config);
 
-        let screen = platform::device::screen(p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, p.PIN_17, p.PIN_2);
+        let screen =
+            platform::device::screen(p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, p.PIN_17, p.PIN_2);
 
         let (ntp_socket, usb, usb_ncm_runner, net_runner) = platform::device::ntp(p.USB);
         _s.spawn(net::usb_task(usb)).unwrap();
@@ -96,20 +92,28 @@ fn setup_platform(_s: &Spawner) -> (Screen, NtpSocket, Pump) {
     }
     #[cfg(not(feature = "device"))]
     {
-        (platform::sim::screen(), platform::sim::ntp(), platform::sim::pump())
+        (
+            platform::sim::screen(),
+            platform::sim::ntp(),
+            platform::sim::pump(),
+        )
     }
 }
 
 #[embassy_executor::main]
 async fn main(s: Spawner) {
     let (screen, ntp_socket, mut pump) = setup_platform(&s);
-    static SCREEN_SIGNAL: ConstStaticCell<Signal<NoopRawMutex, screen::ScreenState>> = ConstStaticCell::new(Signal::new());
+    static SCREEN_SIGNAL: ConstStaticCell<Signal<NoopRawMutex, screen::ScreenState>> =
+        ConstStaticCell::new(Signal::new());
     let screen_signal = SCREEN_SIGNAL.take();
-    s.spawn(screen::drive_screen(screen_signal, screen)).unwrap();
+    s.spawn(screen::drive_screen(screen_signal, screen))
+        .unwrap();
 
     let mut clock = Clock::new();
 
-    time::adjust_current_time(&ntp_socket, &mut clock).await.unwrap();
+    time::adjust_current_time(&ntp_socket, &mut clock)
+        .await
+        .unwrap();
     let mut last_ntp = embassy_time::Instant::now();
     loop {
         let monotonic_now = embassy_time::Instant::now();
@@ -123,13 +127,22 @@ async fn main(s: Spawner) {
         let current_state = RunningState::from_wall_time(&wall_now);
         pump.set_running(current_state.running);
         let show = match current_state.running {
-            false => ScreenState::OffUntil { hour: current_state.until.hour(), min: current_state.until.minute() },
-            true => ScreenState::OnUntil { hour: current_state.until.hour(), min: current_state.until.minute() },
+            false => ScreenState::OffUntil {
+                hour: current_state.until.hour(),
+                min: current_state.until.minute(),
+            },
+            true => ScreenState::OnUntil {
+                hour: current_state.until.hour(),
+                min: current_state.until.minute(),
+            },
         };
         screen_signal.signal(show);
-        let delay_ms = wall_now.until((Unit::Millisecond, &current_state.until)).unwrap().get_milliseconds().try_into().unwrap_or(0);
-        Delay
-            .delay_ms(delay_ms)
-            .await;
+        let delay_ms = wall_now
+            .until((Unit::Millisecond, &current_state.until))
+            .unwrap()
+            .get_milliseconds()
+            .try_into()
+            .unwrap_or(0);
+        Delay.delay_ms(delay_ms).await;
     }
 }

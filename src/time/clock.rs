@@ -14,7 +14,7 @@ pub struct Clock {
 impl Clock {
     pub fn new() -> Self {
         Self {
-            startup_time: jiff::Zoned::default().with_time_zone(TORONTO_TZ.clone())
+            startup_time: jiff::Zoned::default().with_time_zone(TORONTO_TZ.clone()),
         }
     }
 
@@ -23,7 +23,9 @@ impl Clock {
     }
 
     pub fn get_toronto_time(&self) -> Zoned {
-        self.startup_time.clone().saturating_add(Duration::from_micros(Instant::now().as_micros()))
+        self.startup_time
+            .clone()
+            .saturating_add(Duration::from_micros(Instant::now().as_micros()))
     }
 
     pub fn inject_ntp(&mut self, measurement: NtpResult) {
@@ -31,7 +33,10 @@ impl Clock {
     }
 
     pub fn get_timestamp_gen(&self) -> TimestampGen<'_> {
-        TimestampGen { now: Timestamp::default(), clock: self }
+        TimestampGen {
+            now: Timestamp::default(),
+            clock: self,
+        }
     }
 }
 

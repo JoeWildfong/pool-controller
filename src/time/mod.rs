@@ -5,10 +5,7 @@ use clock::Clock;
 
 use crate::platform::NtpSocket;
 
-pub async fn adjust_current_time(
-    socket: &NtpSocket,
-    clock: &mut Clock,
-) -> sntpc::Result<()> {
+pub async fn adjust_current_time(socket: &NtpSocket, clock: &mut Clock) -> sntpc::Result<()> {
     use sntpc::NtpContext;
 
     let context = NtpContext::new(clock.get_timestamp_gen());

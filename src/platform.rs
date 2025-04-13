@@ -11,22 +11,48 @@ pub trait PumpOutput {
 
 #[cfg(feature = "device")]
 pub mod device {
+    use crate::{
+        net::{NetworkDriver, UsbDriver, MTU},
+        Irqs,
+    };
     use embassy_net::udp::{PacketMetadata, UdpSocket};
-    use embassy_rp::{gpio::{Level, Output}, peripherals::{PIN_0, PIN_16, PIN_17, PIN_18, PIN_19, PIN_2, SPI0, USB}, spi::{Config as SpiConfig, Spi}, usb::Driver};
+    use embassy_rp::{
+        gpio::{Level, Output},
+        peripherals::{PIN_0, PIN_16, PIN_17, PIN_18, PIN_19, PIN_2, SPI0, USB},
+        spi::{Config as SpiConfig, Spi},
+        usb::Driver,
+    };
     use embassy_time::Delay;
-    use embassy_usb::{class::cdc_ncm::embassy_net::{Device, Runner}, UsbDevice};
+    use embassy_usb::{
+        class::cdc_ncm::embassy_net::{Device, Runner},
+        UsbDevice,
+    };
     use embedded_hal_bus::spi::ExclusiveDevice;
-    use mipidsi::{interface::SpiInterface, options::{Orientation, Rotation}};
+    use mipidsi::{
+        interface::SpiInterface,
+        options::{Orientation, Rotation},
+    };
     use static_cell::{ConstStaticCell, StaticCell};
-    use crate::{net::{NetworkDriver, UsbDriver, MTU}, Irqs};
 
     use super::{NtpSocket, Pump, PumpOutput, Screen};
 
     #[define_opaque(Screen)]
     // pub fn real_screen(spi: ScreenSpi, dc: ScreenDc) -> Screen {
-    pub fn screen(spi: SPI0, clk: PIN_18, mosi: PIN_19, miso: PIN_16, cs: PIN_17, dc: PIN_2) -> Screen {
+    pub fn screen(
+        spi: SPI0,
+        clk: PIN_18,
+        mosi: PIN_19,
+        miso: PIN_16,
+        cs: PIN_17,
+        dc: PIN_2,
+    ) -> Screen {
         let cs = Output::new(cs, Level::High);
-        let spi = ExclusiveDevice::new(Spi::new_blocking(spi, clk, mosi, miso, SpiConfig::default()), cs, Delay).unwrap();
+        let spi = ExclusiveDevice::new(
+            Spi::new_blocking(spi, clk, mosi, miso, SpiConfig::default()),
+            cs,
+            Delay,
+        )
+        .unwrap();
         let dc = Output::new(dc, Level::Low);
         static BUFFER: ConstStaticCell<[u8; 32]> = ConstStaticCell::new([0; 32]);
         let interface = SpiInterface::new(spi, dc, BUFFER.take());
@@ -38,20 +64,35 @@ pub mod device {
     }
 
     #[define_opaque(NtpSocket)]
-    pub fn ntp(usb: USB) -> (
+    pub fn ntp(
+        usb: USB,
+    ) -> (
         NtpSocket,
         UsbDevice<'static, UsbDriver>,
         Runner<'static, Driver<'static, USB>, MTU>,
-        embassy_net::Runner<'static, Device<'static, MTU>>
+        embassy_net::Runner<'static, Device<'static, MTU>>,
     ) {
         let (driver, usb, usb_ncm_runner, net_runner) = NetworkDriver::new(usb, Irqs);
         static DRIVER_CELL: StaticCell<NetworkDriver> = StaticCell::new();
         let driver = DRIVER_CELL.init(driver);
         static RX_BUFFER: ConstStaticCell<[u8; 4096]> = ConstStaticCell::new([0; 4096]);
         static TX_BUFFER: ConstStaticCell<[u8; 4096]> = ConstStaticCell::new([0; 4096]);
-        static RX_META: ConstStaticCell<[PacketMetadata; 16]> = ConstStaticCell::new([PacketMetadata::EMPTY; 16]);
-        static TX_META: ConstStaticCell<[PacketMetadata; 16]> = ConstStaticCell::new([PacketMetadata::EMPTY; 16]);
-        (UdpSocket::new(driver.stack(), RX_META.take(), RX_BUFFER.take(), TX_META.take(), TX_BUFFER.take()), usb, usb_ncm_runner, net_runner)
+        static RX_META: ConstStaticCell<[PacketMetadata; 16]> =
+            ConstStaticCell::new([PacketMetadata::EMPTY; 16]);
+        static TX_META: ConstStaticCell<[PacketMetadata; 16]> =
+            ConstStaticCell::new([PacketMetadata::EMPTY; 16]);
+        (
+            UdpSocket::new(
+                driver.stack(),
+                RX_META.take(),
+                RX_BUFFER.take(),
+                TX_META.take(),
+                TX_BUFFER.take(),
+            ),
+            usb,
+            usb_ncm_runner,
+            net_runner,
+        )
     }
 
     #[define_opaque(Pump)]
@@ -69,9 +110,15 @@ pub mod device {
 #[cfg(feature = "sim")]
 pub mod sim {
     use core::{net::Ipv4Addr, time::Duration};
-    use std::{net::UdpSocket, sync::mpsc::{channel, Sender}};
+    use std::{
+        net::UdpSocket,
+        sync::mpsc::{channel, Sender},
+    };
 
-    use embedded_graphics::{pixelcolor::Rgb565, prelude::{Dimensions, DrawTarget, Size}};
+    use embedded_graphics::{
+        pixelcolor::Rgb565,
+        prelude::{Dimensions, DrawTarget, Size},
+    };
     use embedded_graphics_simulator::{OutputSettings, SimulatorDisplay, SimulatorEvent, Window};
 
     use super::{NtpSocket, Pump, PumpOutput, Screen};
@@ -86,9 +133,8 @@ pub mod sim {
             window.update(&starting_screen);
             loop {
                 for event in window.events() {
-                    match event {
-                        SimulatorEvent::Quit => std::process::exit(0),
-                        _ => {}
+                    if event == SimulatorEvent::Quit {
+                        std::process::exit(0);
                     }
                 }
                 while let Ok(surface) = recv.try_recv() {
@@ -104,7 +150,7 @@ pub mod sim {
     }
 
     struct WindowDisplay {
-        inner: SimulatorDisplay::<Rgb565>,
+        inner: SimulatorDisplay<Rgb565>,
         send: Sender<SimulatorDisplay<Rgb565>>,
     }
 
@@ -120,11 +166,11 @@ pub mod sim {
 
         fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
         where
-            I: IntoIterator<Item = embedded_graphics::Pixel<Self::Color>>
+            I: IntoIterator<Item = embedded_graphics::Pixel<Self::Color>>,
         {
-            let out = self.inner.draw_iter(pixels)?;
+            self.inner.draw_iter(pixels)?;
             self.send.send(self.inner.clone()).unwrap();
-            Ok(out)
+            Ok(())
         }
     }
 
