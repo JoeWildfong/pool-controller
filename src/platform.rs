@@ -15,7 +15,10 @@ pub mod device {
         net::{NetworkDriver, UsbDriver, MTU},
         Irqs,
     };
-    use embassy_net::udp::{PacketMetadata, UdpSocket};
+    use embassy_net::{
+        udp::{PacketMetadata, UdpSocket},
+        IpListenEndpoint,
+    };
     use embassy_rp::{
         gpio::{Level, Output},
         peripherals::{PIN_0, PIN_16, PIN_17, PIN_18, PIN_19, PIN_2, SPI0, USB},
@@ -54,7 +57,7 @@ pub mod device {
         )
         .unwrap();
         let dc = Output::new(dc, Level::Low);
-        static BUFFER: ConstStaticCell<[u8; 32]> = ConstStaticCell::new([0; 32]);
+        static BUFFER: ConstStaticCell<[u8; 256]> = ConstStaticCell::new([0; 256]);
         let interface = SpiInterface::new(spi, dc, BUFFER.take());
         mipidsi::Builder::new(mipidsi::models::ST7789, interface)
             .display_size(135, 240)
@@ -81,18 +84,15 @@ pub mod device {
             ConstStaticCell::new([PacketMetadata::EMPTY; 16]);
         static TX_META: ConstStaticCell<[PacketMetadata; 16]> =
             ConstStaticCell::new([PacketMetadata::EMPTY; 16]);
-        (
-            UdpSocket::new(
-                driver.stack(),
-                RX_META.take(),
-                RX_BUFFER.take(),
-                TX_META.take(),
-                TX_BUFFER.take(),
-            ),
-            usb,
-            usb_ncm_runner,
-            net_runner,
-        )
+        let mut socket = UdpSocket::new(
+            driver.stack(),
+            RX_META.take(),
+            RX_BUFFER.take(),
+            TX_META.take(),
+            TX_BUFFER.take(),
+        );
+        socket.bind(IpListenEndpoint::from(0)).unwrap();
+        (socket, usb, usb_ncm_runner, net_runner)
     }
 
     #[define_opaque(Pump)]
