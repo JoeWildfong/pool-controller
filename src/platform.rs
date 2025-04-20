@@ -12,12 +12,12 @@ pub trait PumpOutput {
 #[cfg(feature = "device")]
 pub mod device {
     use crate::{
-        net::{NetworkDriver, UsbDriver, MTU},
         Irqs,
+        net::{MTU, NetworkDriver, UsbDriver},
     };
     use embassy_net::{
-        udp::{PacketMetadata, UdpSocket},
         IpListenEndpoint,
+        udp::{PacketMetadata, UdpSocket},
     };
     use embassy_rp::{
         gpio::{Level, Output},
@@ -27,8 +27,8 @@ pub mod device {
     };
     use embassy_time::Delay;
     use embassy_usb::{
-        class::cdc_ncm::embassy_net::{Device, Runner},
         UsbDevice,
+        class::cdc_ncm::embassy_net::{Device, Runner},
     };
     use embedded_hal_bus::spi::ExclusiveDevice;
     use mipidsi::{
@@ -105,7 +105,7 @@ pub mod sim {
     use core::{net::Ipv4Addr, time::Duration};
     use std::{
         net::UdpSocket,
-        sync::mpsc::{channel, Sender},
+        sync::mpsc::{Sender, channel},
     };
 
     use embedded_graphics::{

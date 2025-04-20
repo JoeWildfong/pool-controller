@@ -2,7 +2,7 @@ use core::fmt::Write as _;
 
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, signal::Signal};
 use embedded_graphics::{
-    mono_font::{ascii, MonoTextStyle},
+    mono_font::{MonoTextStyle, ascii},
     pixelcolor::Rgb565,
     prelude::*,
     text::{Alignment, Text},

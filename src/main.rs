@@ -7,7 +7,7 @@ use embassy_executor::Spawner;
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, signal::Signal};
 use embassy_time::{Delay, Duration, WithTimeout};
 use embedded_hal_async::delay::DelayNs;
-use jiff::{civil::Time, tz::TimeZone, Unit, Zoned};
+use jiff::{Unit, Zoned, civil::Time, tz::TimeZone};
 use screen::ScreenState;
 use static_cell::ConstStaticCell;
 use time::clock::Clock;

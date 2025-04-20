@@ -1,17 +1,17 @@
 use embassy_net::StackResources;
 use embassy_rp::{
+    Peripheral,
     clocks::RoscRng,
     interrupt::typelevel::Binding,
     peripherals::USB,
     usb::{Driver, InterruptHandler},
-    Peripheral,
 };
 use embassy_usb::{
-    class::cdc_ncm::{
-        embassy_net::{Device, Runner, State as NetState},
-        CdcNcmClass, State,
-    },
     Builder, Config, UsbDevice,
+    class::cdc_ncm::{
+        CdcNcmClass, State,
+        embassy_net::{Device, Runner, State as NetState},
+    },
 };
 use rand_core::RngCore as _;
 use static_cell::StaticCell;
