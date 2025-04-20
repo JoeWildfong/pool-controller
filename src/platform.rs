@@ -21,7 +21,7 @@ pub mod device {
     };
     use embassy_rp::{
         gpio::{Level, Output},
-        peripherals::{PIN_0, PIN_16, PIN_17, PIN_18, PIN_19, PIN_2, SPI0, USB},
+        peripherals::{PIN_0, PIN_16, PIN_17, PIN_18, PIN_19, SPI0, USB},
         spi::{Config as SpiConfig, Spi},
         usb::Driver,
     };
@@ -41,17 +41,10 @@ pub mod device {
 
     #[define_opaque(Screen)]
     // pub fn real_screen(spi: ScreenSpi, dc: ScreenDc) -> Screen {
-    pub fn screen(
-        spi: SPI0,
-        clk: PIN_18,
-        mosi: PIN_19,
-        miso: PIN_16,
-        cs: PIN_17,
-        dc: PIN_2,
-    ) -> Screen {
+    pub fn screen(spi: SPI0, dc: PIN_16, cs: PIN_17, clk: PIN_18, mosi: PIN_19) -> Screen {
         let cs = Output::new(cs, Level::High);
         let spi = ExclusiveDevice::new(
-            Spi::new_blocking(spi, clk, mosi, miso, SpiConfig::default()),
+            Spi::new_blocking_txonly(spi, clk, mosi, SpiConfig::default()),
             cs,
             Delay,
         )

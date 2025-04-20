@@ -19,6 +19,7 @@ pub enum ScreenState {
 pub async fn drive_screen(signal: &'static Signal<NoopRawMutex, ScreenState>, mut display: Screen) {
     loop {
         let next_state = signal.wait().await;
+        display.clear(Rgb565::BLACK).unwrap();
         match next_state {
             ScreenState::OnUntil { hour, min } => {
                 let mut buf = heapless::String::<20>::new();

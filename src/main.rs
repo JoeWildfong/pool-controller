@@ -5,7 +5,7 @@
 
 use embassy_executor::Spawner;
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, signal::Signal};
-use embassy_time::Delay;
+use embassy_time::{Delay, Duration, WithTimeout};
 use embedded_hal_async::delay::DelayNs;
 use jiff::{civil::Time, tz::TimeZone, Unit, Zoned};
 use screen::ScreenState;
@@ -40,19 +40,19 @@ static TORONTO_TZ: TimeZone = jiff::tz::get!("America/Toronto");
 
 struct RunningState {
     running: bool,
-    until: jiff::Zoned,
+    end: jiff::Zoned,
 }
 
 impl RunningState {
     const ON_TIME: Time = jiff::civil::time(9, 0, 0, 0);
-    const OFF_TIME: Time = jiff::civil::time(12, 0, 0, 0);
+    const OFF_TIME: Time = jiff::civil::time(13, 50, 0, 0);
 
     pub fn from_wall_time(now: &Zoned) -> Self {
         if (Self::ON_TIME..Self::OFF_TIME).contains(&now.time()) {
             let off_zoned = now.with().time(Self::OFF_TIME).build().unwrap();
             Self {
                 running: true,
-                until: off_zoned,
+                end: off_zoned,
             }
         } else {
             let date = if now.time() < Self::ON_TIME {
@@ -64,7 +64,7 @@ impl RunningState {
 
             Self {
                 running: false,
-                until: on_zoned,
+                end: on_zoned,
             }
         }
     }
@@ -78,8 +78,7 @@ fn setup_platform(_s: &Spawner) -> (Screen, NtpSocket, Pump) {
         let config = Config::default();
         let p = embassy_rp::init(config);
 
-        let screen =
-            platform::device::screen(p.SPI0, p.PIN_18, p.PIN_19, p.PIN_16, p.PIN_17, p.PIN_2);
+        let screen = platform::device::screen(p.SPI0, p.PIN_16, p.PIN_17, p.PIN_18, p.PIN_19);
 
         let (ntp_socket, usb, usb_ncm_runner, net_runner) = platform::device::ntp(p.USB);
         _s.spawn(net::usb_task(usb)).unwrap();
@@ -125,24 +124,38 @@ async fn main(s: Spawner) {
         }
         let wall_now = clock.get_toronto_time();
         let current_state = RunningState::from_wall_time(&wall_now);
-        pump.set_running(current_state.running);
-        let show = match current_state.running {
-            false => ScreenState::OffUntil {
-                hour: current_state.until.hour(),
-                min: current_state.until.minute(),
-            },
-            true => ScreenState::OnUntil {
-                hour: current_state.until.hour(),
-                min: current_state.until.minute(),
-            },
+        let show = if current_state.running {
+            ScreenState::OnUntil {
+                hour: current_state.end.hour(),
+                min: current_state.end.minute(),
+            }
+        } else {
+            ScreenState::OffUntil {
+                hour: current_state.end.hour(),
+                min: current_state.end.minute(),
+            }
         };
         screen_signal.signal(show);
         let delay_ms = wall_now
-            .until((Unit::Millisecond, &current_state.until))
+            .until((Unit::Millisecond, &current_state.end))
             .unwrap()
             .get_milliseconds()
             .try_into()
             .unwrap_or(0);
-        Delay.delay_ms(delay_ms).await;
+        let fut = async {
+            if current_state.running {
+                loop {
+                    pump.set_running(true);
+                    Delay.delay_ms(5 * 60 * 1000).await;
+                    pump.set_running(false);
+                    Delay.delay_ms(5 * 60 * 1000).await;
+                }
+            } else {
+                pump.set_running(false);
+                core::future::pending::<()>().await;
+            }
+        }
+        .with_timeout(Duration::from_millis(delay_ms));
+        let _ = fut.await;
     }
 }

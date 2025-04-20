@@ -32,6 +32,7 @@ rand_core = "0.6.4"
 jiff = { version = "0.2.6", default-features = false, features = ["static"] }
 mipidsi = "0.9.0"
 heapless = "0.8.0"
+embassy-futures = "0.1.1"
 
 [features]
 device = [
