@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # device only
-embassy-rp = { version = "0.4.0", features = ["intrinsics", "run-from-ram", "critical-section-impl", "time-driver", "rp2040"], optional = true }
+embassy-rp = { version = "0.4.0", features = ["intrinsics", "critical-section-impl", "time-driver", "rp2040"], optional = true }
 cyw43 = { version = "0.3.0", optional = true }
 cyw43-pio = { version = "0.4.0", optional = true }
 cortex-m-rt = { version = "0.7.3", optional = true }

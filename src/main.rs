@@ -125,15 +125,9 @@ async fn main(s: Spawner) {
         let wall_now = clock.get_toronto_time();
         let current_state = RunningState::from_wall_time(&wall_now);
         let show = if current_state.running {
-            ScreenState::OnUntil {
-                hour: current_state.end.hour(),
-                min: current_state.end.minute(),
-            }
+            ScreenState::OnUntil(current_state.end.time())
         } else {
-            ScreenState::OffUntil {
-                hour: current_state.end.hour(),
-                min: current_state.end.minute(),
-            }
+            ScreenState::OffUntil(current_state.end.time())
         };
         screen_signal.signal(show);
         let delay_ms = wall_now
